@@ -1,13 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Nov 28 13:48:40 2017
+Created on Wed Dec  6 14:57:23 2017
 
 @author: xuzhi
 """
 
-# -*- coding: utf-8 -*-
-
-  
 
 from elasticsearch import Elasticsearch
 
