@@ -29,9 +29,10 @@ class rrdocx:
     str_xwsjfx=''
     
     
-    def __init__(self,filename):
+    def __init__(self,filename,server):
 
         self.filename = filename
+        self.server = server
         self.document=Document()
         
         if os.path.exists(filename):
@@ -65,7 +66,17 @@ class rrdocx:
     def get_var(self):
         pass
     
+    
+    from datasource import estools
+    
+    def get_esdata(self):
+        es = estools(self.server)
+        data = es.getkv("airr_2017.12.7","airr_mapping","603727.SH")
+        return data
+        
     def makeparagraph(self):
+ 
+        
         self.str_tzjy = "本报告对该股票长期建议：0001，预测目标价为0000。根据各方面综合测算，短期操作建议观望。"
         self.str_gsjs='公司是国内白酒行业的标志性企业，主要生产销售世界三大名酒之一的茅台酒，同时进行饮料、食品、包装材料的生产和销售，防伪技术开发，信息产业相关产品的研制开发。茅台酒历史悠久，源远流长，是酱香型白酒的典型代表，享有“国酒”的美称。公司产品形成了低度、高中低档、极品三大系列70多个规格品种，全方位跻身市场，从而占据了白酒市场制高点，称雄于中国极品酒市场。'
         self.str_hyfx='根据万德行业分类，该股票属于0007，该行业近期研究报告平均打分为0003_0，建议0003_1。该行业处于上升周期，且行业集中度较高，该公司**产品在行业占有量为*，属于寡头地位，且产品供不求。'
@@ -141,8 +152,9 @@ class rrdocx:
 if __name__ == '__main__':
     
     filename ="./研究报告.docx"
-    rd = rrdocx(filename)
-    rd.autorr()
+    rd = rrdocx(filename,"10.237.2.132")
+    data = rd.get_esdata()
+    #rd.autorr()
 
 
 #import win32api
