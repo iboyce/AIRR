@@ -7,8 +7,41 @@ Created on Fri Dec  1 10:52:19 2017
 
 import numpy as np
 import matplotlib.pyplot as plt
+from pylab import mpl
+
+mpl.rcParams['font.sans-serif'] = ['FangSong'] # 指定默认字体
+mpl.rcParams['axes.unicode_minus'] = False # 解决保存图像是负号'-'显示为方块的问题
 
 class xz_graph():
+    
+    def radar2d(self,title="matplotlib雷达图",labels=['营运','偿债','成长','盈利'],ndata =[[1,3,6,4],[2,6,4,9]],filepath=None):
+        data=ndata[0]
+        data2=ndata[1]
+        dataLenth = len(labels)
+        angles = np.linspace(0, 2*np.pi, dataLenth, endpoint=False)
+        data = np.concatenate((data, [data[0]])) # 闭合
+        data2 = np.concatenate((data2, [data2[0]]))
+        
+        angles = np.concatenate((angles, [angles[0]])) # 闭合
+        
+        fig = plt.figure(1,figsize=(5,5),dpi=72)
+        ax = fig.add_subplot(111, polar=True)    # polar参数！！
+        ax.plot(angles, data, 'mo-', linewidth=2)    # 画线
+        ax.plot(angles, data2, 'ro-', linewidth=2)   # 画线
+        print(data,data2)
+        ax.fill(angles, data, facecolor='r', alpha=0.25)   # 填充
+        ax.set_thetagrids(angles * 180/np.pi, labels, fontproperties="SimHei")
+        ax.set_title(title, va='bottom', fontproperties="SimHei")
+        ax.set_rlim(-1.5,1.5)
+        ax.grid(True)
+
+    
+        if filepath==None:
+            plt.show()
+        else:
+            plt.savefig(filepath)
+        plt.clf()
+        plt.cla()
     
     def radar(self,title="matplotlib雷达图",labels= ['艺术A','调研I','实际R','常规C','企业E','社会S'],data =[1,4,3,6,4,8],filepath=None):
         dataLenth = len(labels)
@@ -35,7 +68,7 @@ class xz_graph():
         plt.figure(1,figsize=(10,10),dpi=72)#创建图表1  ,figsize指定尺寸，dip指定清晰度
         plt.subplots_adjust(wspace=0.3, hspace=0.4)                #调整子图之间距
         
-        font = {'family' : 'serif',  
+        font = {'family' : 'SimHei',  
         'color'  : 'darkred',  
         'weight' : 'normal',  
         'size'   : 10,  
