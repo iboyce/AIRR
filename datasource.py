@@ -23,6 +23,7 @@ class estools(object):
         self.es.update(index,doc_type,id,{"doc":body,"upsert":body})
         
     def getkv(self,index,doc_type,id):
+        ##待增加处理id不存在的情况
         data = self.es.get(index,doc_type,id=id)
         return data['_source']
 

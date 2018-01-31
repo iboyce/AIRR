@@ -10,35 +10,34 @@ Created on Tue Nov 28 13:48:40 2017
 import numpy as np
 import matplotlib.pyplot as plt
 from pylab import mpl 
+import math
+from datasource import estools
 
-def radar2d(title="matplotlib雷达图",labels=['营运','偿债','成长','盈利'],ndata =[[1,3,6,4],[2,6,4,9]],filepath=None):
-    data=ndata[0]
-    data2=ndata[1]
-    dataLenth = len(labels)
-    angles = np.linspace(0, 2*np.pi, dataLenth, endpoint=False)
-    data = np.concatenate((data, [data[0]])) # 闭合
-    data2 = np.concatenate((data2, [data2[0]]))
-    
-    angles = np.concatenate((angles, [angles[0]])) # 闭合
-    
-    fig = plt.figure()
-    ax = fig.add_subplot(111, polar=True)    # polar参数！！
-    ax.plot(angles, data, 'mo-', linewidth=2)    # 画线
-    ax.plot(angles, data2, 'ro-', linewidth=2)   # 画线
-    print(data,data2)
-    ax.fill(angles, data, facecolor='r', alpha=0.25)   # 填充
-    ax.set_thetagrids(angles * 180/np.pi, labels, fontproperties="SimHei")
-    ax.set_title(title, va='bottom', fontproperties="SimHei")
-    ax.set_rlim(0,10)
-    ax.grid(True)
+conn = pymssql.connect(host="10.237.120.198", port="1433" ,user="wande", password="wande", database="cldb")
+conn1 = pymssql.connect(host="10.101.221.183", port="1433" ,user="wande", password="wande", database="wande")
+#df = pd.read_sql("Select top 10 TRADE_DT,S_VAL_PE_TTM,S_VAL_PB_NEW from ASHAREEODDERIVATIVEINDICATOR where  S_INFO_WINDCODE='600519.SH' and TRADE_DT = convert(varchar, GETDATE()-1, 112)",con=conn)
 
-    
-    if filepath==None:
-        plt.show()
-    else:
-        plt.savefig(filepath)
-    plt.clf()
-    plt.cla()
-    
+stockid='603899.SH'
+##取最大近3年的净利润net_profit
+sql1="SELECT TOP 3 avg(NET_PROFIT_AVG) as NET_PROFIT_AVG,EST_REPORT_DT FROM AShareConsensusData where S_INFO_WINDCODE='%s' and (EST_REPORT_DT='20191231' or EST_REPORT_DT='20181231' or EST_REPORT_DT='20171231') group by  EST_REPORT_DT"%(stockid)
+pre_df_profit_max = pd.read_sql(sql1,con=conn1)
+year_num =  len(pre_df_profit_max)
 
-radar2d(title="财务能力",labels= ['营运','偿债','成长','盈利'],ndata =[[1,3,6,4],[2,6,4,9]])
+#取2016年净利
+pre_profit_max = max(pre_df_profit_max['NET_PROFIT_AVG'])
+sql2=" select net_profit_ttm from  AShareTTMHis WHERE report_period='20161231' AND S_INFO_WINDCODE='%s'"%(stockid)
+pre_df_profit_min = pd.read_sql(sql2,con=conn1)
+pre_profit_min = pre_df_profit_min.iat[0,0]/10000.0
+
+#计算复合增速
+compoundrate = math.pow(pre_profit_max/pre_profit_min,1.0/year_num)
+
+#取PE
+es = estools(host="10.237.2.132",index="airr_2017.12.21",doc_type="airr_mapping")
+data = es.getkv("airr_2017.12.21","airr_mapping",stockid)
+stkpe = data.get('double_pe_ttm',-111)
+
+#计算peg
+stkpeg = stkpe/((compoundrate-1)*100)
+
+print(compoundrate-1,stkpeg)

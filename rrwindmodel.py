@@ -5,6 +5,9 @@ Created on Tue Nov 28 14:47:41 2017
 @author: xuzhi
 """
 
+import math
+from datasource import estools
+
 #创建连接池
 from sqlalchemy import create_engine
 
@@ -83,6 +86,8 @@ class windata(object):
         self.str_windindname = -111
         self.double_pe_ttm = -111
         self.double_pb = -111
+        self.double_compoundrate= -111
+        self.double_peg = -111
         
         self.array_zj_time  = []
         self.array_zj_ex = []
@@ -182,6 +187,51 @@ class windata(object):
             
             return  self.array_zj_time,self.array_zj_ex,self.array_zj_large,self.array_zj_med,self.array_zj_small
         
+        
+    def get_peg(self,windcode='600519.SH'):
+        conn1 = pymssql.connect(host="10.101.221.183", port="1433" ,user="wande", password="wande", database="wande")
+        stockid=windcode
+        ##取最大近3年的净利润net_profit
+        sql1="SELECT TOP 3 avg(NET_PROFIT_AVG) as NET_PROFIT_AVG,EST_REPORT_DT FROM AShareConsensusData where S_INFO_WINDCODE='%s' and (EST_REPORT_DT='20191231' or EST_REPORT_DT='20181231' or EST_REPORT_DT='20171231') group by  EST_REPORT_DT"%(stockid)
+        pre_df_profit_max = pd.read_sql(sql1,con=conn1)
+        year_num =  len(pre_df_profit_max)
+        
+        if year_num == 0:
+            return -111,-111
+        
+        #取2016年净利
+        pre_profit_max = max(pre_df_profit_max['NET_PROFIT_AVG'])
+        sql2=" select net_profit_ttm from  AShareTTMHis WHERE report_period='20161231' AND S_INFO_WINDCODE='%s'"%(stockid)
+        pre_df_profit_min = pd.read_sql(sql2,con=conn1)
+        
+        if len(pre_df_profit_min) == 0:
+            return -111,-111
+        
+        pre_profit_min = pre_df_profit_min.iat[0,0]/10000.0
+        
+        #计算复合增速
+        if pre_profit_min < 0 or pre_profit_max < 0:              #处理异常
+            self.double_compoundrate=1
+            stkpeg=-1
+            return 1,-1
+        #print("pre_profit_max/pre_profit_min",pre_profit_max,pre_profit_min)
+        compoundrate = math.pow(pre_profit_max/pre_profit_min,1.0/year_num)
+        
+        #取PE
+        es = estools(host="10.237.2.132",index="airr_2018.01.17",doc_type="airr_mapping")
+        data = es.getkv("airr_2018.01.17","airr_mapping",stockid)
+        stkpe = data.get('double_pe_ttm',-111)
+        
+        #计算peg
+        if stkpe==None or stkpe==-111:
+            return -111,-111
+        
+        stkpeg = stkpe/((compoundrate-1)*100)
+        
+        self.double_compoundrate = compoundrate-1
+        self.double_peg = stkpeg
+        return compoundrate-1,stkpeg     
+                                                                                                                                                                                        
 
 from datasource import estools
 
@@ -207,10 +257,11 @@ class windes(object):
         wd.get_zj(stockid)
         wd.get_pepb(stockid)
         wd.get_yoy_eps(stockid)
+        wd.get_peg(stockid)
         
         body={
-                "@timestamp":"2017-12-08",
-                "date_airr":"2017-12-08T18:48:17.136+0800",
+                "@timestamp":"2017-01-17",
+                "date_airr":"2017-01-17T18:48:17.136+0800",
                 "astr_intro":wd.astr_intro,
                 "double_srating":wd.double_srating,
                 "double_est_price":wd.double_est_price,
@@ -224,10 +275,12 @@ class windes(object):
                 "array_zj_ex":wd.array_zj_ex,
                 "array_zj_large":wd.array_zj_large,
                 "array_zj_med":wd.array_zj_med,
-                "array_zj_small":wd.array_zj_small
-                
+                "array_zj_small":wd.array_zj_small,
+                "double_compoundrate":wd.double_compoundrate,
+                "double_peg":wd.double_peg
                 }     
-        print(body)
+        
+        print(stockid,index,doc_type,body)
         self.es.upsert(index,doc_type,stockid,body)            
         
         
@@ -240,11 +293,12 @@ if __name__ == '__main__':
     
     #print("intro:",wd.get_intro(),wd.get_srating_price(),wd.get_indrating()) 
     #cc=wd.get_zj()
-    #wdes.stocktoes("600519.SH")
+    #wdes.stocktoes(stockid="603000.SH",index="airr_2017.01.17",doc_type="airr_mapping")
     #c=wd.get_indrating("600519.SH")
     #cc=wd.get_windindname("600519.SH")
     #cc=wd.get_pepb()
-    wdes.atoes(index="airr_2017.12.21",doc_type="airr_mapping")
+    wdes.atoes(index="airr_2018.01.17",doc_type="airr_mapping")
     #wdes.stocktoes(stockid="600519.SH",index="airr_2017.12.21",doc_type="airr_mapping")
     #cc=wd.get_yoy_eps()
+    #cc=wd.get_peg("600519.SH")
     print("Total time getting data:%s"%str(time.time()-t0))
